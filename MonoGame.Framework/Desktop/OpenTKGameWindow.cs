@@ -54,7 +54,7 @@ using OpenTK.Graphics;
 
 namespace Microsoft.Xna.Framework
 {
-    class OpenTKGameWindow : GameWindow, IDisposable
+    public class OpenTKGameWindow : GameWindow, IDisposable
     {
         private bool _isResizable;
         private bool _isBorderless;
@@ -62,7 +62,7 @@ namespace Microsoft.Xna.Framework
 
 		//private DisplayOrientation _currentOrientation;
         private IntPtr _windowHandle;
-        private INativeWindow window;
+        private OpenTK.GameWindow window;
 
         protected Game game;
         private List<Microsoft.Xna.Framework.Input.Keys> keys;
@@ -89,7 +89,7 @@ namespace Microsoft.Xna.Framework
             }
         }
 
-        internal INativeWindow Window { get { return window; } }
+        internal OpenTK.GameWindow Window { get { return window; } }
 
         #endregion
 
@@ -306,7 +306,7 @@ namespace Microsoft.Xna.Framework
 
             GraphicsContext.ShareContexts = true;
 
-            window = new NativeWindow();
+            window = new OpenTK.GameWindow();
             window.Closing += new EventHandler<CancelEventArgs>(OpenTkGameWindow_Closing);
             window.Resize += OnResize;
             window.KeyDown += new EventHandler<OpenTK.Input.KeyboardKeyEventArgs>(Keyboard_KeyDown);
