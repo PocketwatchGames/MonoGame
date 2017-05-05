@@ -413,7 +413,7 @@ namespace Microsoft.Xna.Framework
 
         private TimeSpan _accumulatedElapsedTime;
         private readonly GameTime _gameTime = new GameTime();
-        private Stopwatch _gameTimer;
+        private Stopwatch _gameTimer = Stopwatch.StartNew();
         private long _previousTicks = 0;
         private int _updateFrameLag;
 
