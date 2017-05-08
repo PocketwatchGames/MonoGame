@@ -28,7 +28,7 @@ namespace MonoGame.Tools.Pipeline
 
         private readonly List<ContentItemTemplate> _templateItems;
 
-        private static readonly string [] _mgcbSearchPaths = new []       
+        private static List<string> _mgcbSearchPaths = new List<string>       
         {
             "",
 #if DEBUG
@@ -42,6 +42,11 @@ namespace MonoGame.Tools.Pipeline
             Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "../MGCB"),
             Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
         };
+
+        public static void AddMGCBSearchPath(string searchPath)
+        {
+            _mgcbSearchPaths.Add(searchPath);
+        }
 
         public IEnumerable<ContentItemTemplate> Templates
         {
