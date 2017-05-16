@@ -208,19 +208,19 @@ namespace Microsoft.Xna.Framework.Graphics
 
                 byte[] pixels = new byte[bitmap.Size.Width * bitmap.Size.Height * 4];
                 toReturn.GetData(pixels);
-                
-                // flibit alpha hack in FNA, I doubt it's needed though...
-                //for (int i = 0; i < pixels.Length; i += 4)
-                //{
-                //    if (pixels[i + 3] == 0)
-                //    {
-                //        pixels[i] = 0;
-                //        pixels[i + 1] = 0;
-                //        pixels[i + 2] = 0;
-                //    }
-                //}
 
-                //toReturn.SetData(pixels);
+                // flibit alpha hack in FNA, I doubt it's needed though...
+                for (int i = 0; i < pixels.Length; i += 4)
+                {
+                    if (pixels[i + 3] == 0)
+                    {
+                        pixels[i] = 0;
+                        pixels[i + 1] = 0;
+                        pixels[i + 2] = 0;
+                    }
+                }
+
+                toReturn.SetData(pixels);
             }
             return toReturn;
 #endif
