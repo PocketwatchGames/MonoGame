@@ -205,22 +205,6 @@ namespace Microsoft.Xna.Framework.Graphics
                 toReturn = new Texture2D(graphicsDevice, bitmap.Size.Width, bitmap.Size.Height);
 
                 toReturn._texture = sharpDxTexture;
-
-                byte[] pixels = new byte[bitmap.Size.Width * bitmap.Size.Height * 4];
-                toReturn.GetData(pixels);
-
-                // flibit alpha hack in FNA, I doubt it's needed though...
-                for (int i = 0; i < pixels.Length; i += 4)
-                {
-                    if (pixels[i + 3] == 0)
-                    {
-                        pixels[i] = 0;
-                        pixels[i + 1] = 0;
-                        pixels[i + 2] = 0;
-                    }
-                }
-
-                toReturn.SetData(pixels);
             }
             return toReturn;
 #endif
@@ -309,7 +293,7 @@ namespace Microsoft.Xna.Framework.Graphics
 #endif
 #if !WINDOWS_PHONE
 
-        static SharpDX.Direct3D11.Texture2D CreateTex2DFromBitmap(BitmapSource bsource, GraphicsDevice device)
+        static unsafe SharpDX.Direct3D11.Texture2D CreateTex2DFromBitmap(BitmapSource bsource, GraphicsDevice device)
         {
 
             Texture2DDescription desc;
@@ -328,6 +312,17 @@ namespace Microsoft.Xna.Framework.Graphics
             using(DataStream s = new DataStream(bsource.Size.Height * bsource.Size.Width * 4, true, true))
             {
                 bsource.CopyPixels(bsource.Size.Width * 4, s);
+
+                var data = (byte*)s.DataPointer;
+                for (var i = 0; i < s.Length; i += 4)
+                {
+                    if (data[i + 3] == 0)
+                    {
+                        data[i + 0] = 0;
+                        data[i + 1] = 0;
+                        data[i + 2] = 0;
+                    }
+                }
 
                 DataRectangle rect = new DataRectangle(s.DataPointer, bsource.Size.Width * 4);
 
