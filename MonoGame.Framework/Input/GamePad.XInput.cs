@@ -267,6 +267,13 @@ namespace Microsoft.Xna.Framework.Input
                 return false;
 
             var controller = _controllers[index];
+
+            if (!controller.IsConnected)
+            {
+                _connected[index] = false;
+                return false;
+            }
+
             var result = controller.SetVibration(new SharpDX.XInput.Vibration
             {
                 LeftMotorSpeed = (ushort)(leftMotor * ushort.MaxValue),
