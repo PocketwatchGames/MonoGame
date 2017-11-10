@@ -149,7 +149,15 @@ namespace MonoGame.Tools.Pipeline
             AddContent(sourceFile, assetName, false);
         }
 
-        public bool AddContent(string sourceFile, string assetName, bool skipDuplicates)
+        [CommandLineParameter(
+            Name = "launchDebugger",
+            ValueName = "sourceFile")]
+        public void OnDebug()
+        {
+            _project.LaunchDebugger = true;
+        }
+
+        public bool AddContent(string sourceFile, bool skipDuplicates)
         {
             // Make sure the source file is relative to the project.
             var projectDir = ProjectDirectory + Path.DirectorySeparatorChar;
@@ -300,6 +308,9 @@ namespace MonoGame.Tools.Pipeline
             line = string.Format(lineFormat, "compress", _project.Compress);
             io.WriteLine(line);
 
+            if (_project.LaunchDebugger)
+                io.WriteLine("/launchdebugger");
+
             line = FormatDivider("References");
             io.WriteLine(line);
 
@@ -312,7 +323,11 @@ namespace MonoGame.Tools.Pipeline
             line = FormatDivider("Content");
             io.WriteLine(line);
 
-            foreach (var i in _project.ContentItems)
+            // Sort the items alphabetically to ensure a consistent output
+            // and better mergability of the resulting MGCB file.
+            var sortedItems = _project.ContentItems.OrderBy(c => c.OriginalPath, StringComparer.InvariantCulture);
+
+            foreach (var i in sortedItems)
             {
                 // Reject any items that don't pass the filter.              
                 if (filterItem != null && filterItem(i))

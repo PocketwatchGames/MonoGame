@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Xna.Framework.Utilities;
+using System.Runtime.InteropServices;
+using Microsoft.Xna.Framework.Utilities;
 
 
 namespace Microsoft.Xna.Framework.Graphics
@@ -122,7 +124,7 @@ namespace Microsoft.Xna.Framework.Graphics
 		public event EventHandler<ResourceDestroyedEventArgs> ResourceDestroyed;
         public event EventHandler<EventArgs> Disposing;
 
-        internal event EventHandler<EventArgs> PresentationChanged;
+        internal event EventHandler<PresentationEventArgs> PresentationChanged;
 
         private int _maxVertexBufferSlots;
         internal int MaxTextureSlots;
@@ -176,6 +178,13 @@ namespace Microsoft.Xna.Framework.Graphics
         /// </summary>
         public GraphicsMetrics Metrics { get { return _graphicsMetrics; } set { _graphicsMetrics = value; } }
 
+        private GraphicsDebug _graphicsDebug;
+
+        /// <summary>
+        /// Access debugging APIs for the graphics subsystem.
+        /// </summary>
+        public GraphicsDebug GraphicsDebug { get { return _graphicsDebug; } set { _graphicsDebug = value; } }
+
         internal GraphicsDevice(GraphicsDeviceInformation gdi)
             : this(gdi.Adapter, gdi.GraphicsProfile, gdi.PresentationParameters)
         {
@@ -214,6 +223,7 @@ namespace Microsoft.Xna.Framework.Graphics
             Setup();
             GraphicsCapabilities = new GraphicsCapabilities();
             GraphicsCapabilities.Initialize(this);
+
             Initialize();
         }
 
@@ -269,8 +279,7 @@ namespace Microsoft.Xna.Framework.Graphics
             Dispose(false);
         }
 
-        private int GetClampedMultisampleCount(
-            int multiSampleCount)
+        internal int GetClampedMultisampleCount(int multiSampleCount)
         {
             if (multiSampleCount > 1)
             {
@@ -292,6 +301,7 @@ namespace Microsoft.Xna.Framework.Graphics
             }
             else return 0;
         }
+
         internal void Initialize()
         {
             PlatformInitialize();
@@ -560,9 +570,7 @@ namespace Microsoft.Xna.Framework.Graphics
                 }
 
                 _isDisposed = true;
-
-                if (Disposing != null)
-                    Disposing(this, EventArgs.Empty);
+                EventHelpers.Raise(this, Disposing, EventArgs.Empty);
             }
         }
 
@@ -599,23 +607,20 @@ namespace Microsoft.Xna.Framework.Graphics
         }
         */
 
-        partial void PlatformValidatePresentationParameters(PresentationParameters presentationParameters);
+        partial void PlatformReset();
 
         public void Reset()
         {
-            PlatformValidatePresentationParameters(PresentationParameters);
+            PlatformReset();
 
-            if (DeviceResetting != null)
-                DeviceResetting(this, EventArgs.Empty);
+            EventHelpers.Raise(this, DeviceResetting, EventArgs.Empty);
 
             // Update the back buffer.
             OnPresentationChanged();
-
-            if (PresentationChanged != null)
-                PresentationChanged(this, EventArgs.Empty);
-            if (DeviceReset != null)
-                DeviceReset(this, EventArgs.Empty);
-        }
+            
+            EventHelpers.Raise(this, PresentationChanged, new PresentationEventArgs(PresentationParameters));
+            EventHelpers.Raise(this, DeviceReset, EventArgs.Empty);
+       }
 
         public void Reset(PresentationParameters presentationParameters)
         {
@@ -632,8 +637,7 @@ namespace Microsoft.Xna.Framework.Graphics
         /// </summary>
         internal void OnDeviceResetting()
         {
-            if (DeviceResetting != null)
-                DeviceResetting(this, EventArgs.Empty);
+            EventHelpers.Raise(this, DeviceResetting, EventArgs.Empty);
 
             lock (_resourcesLock)
             {
@@ -655,8 +659,7 @@ namespace Microsoft.Xna.Framework.Graphics
         /// </summary>
         internal void OnDeviceReset()
         {
-            if (DeviceReset != null)
-                DeviceReset(this, EventArgs.Empty);
+            EventHelpers.Raise(this, DeviceReset, EventArgs.Empty);
         }
 
         public DisplayMode DisplayMode
@@ -1292,6 +1295,64 @@ namespace Microsoft.Xna.Framework.Graphics
                 _graphicsMetrics._drawCount++;
                 _graphicsMetrics._primitiveCount += (primitiveCount * instanceCount);
             }
+        }
+
+        /// <summary>
+        /// Gets the Pixel data of what is currently drawn on screen.
+        /// The format is whatever the current format of the backbuffer is.
+        /// </summary>
+        /// <typeparam name="T">A byte[] of size (ViewPort.Width * ViewPort.Height * 4)</typeparam>
+        public void GetBackBufferData<T>(T[] data) where T : struct
+        {
+            if (data == null)
+                throw new ArgumentNullException("data");
+            GetBackBufferData(null, data, 0, data.Length);
+        }
+
+        public void GetBackBufferData<T>(T[] data, int startIndex, int elementCount) where T : struct
+        {
+            GetBackBufferData(null, data, startIndex, elementCount);
+        }
+
+        public void GetBackBufferData<T>(Rectangle? rect, T[] data, int startIndex, int elementCount)
+            where T : struct
+        {
+            if (data == null)
+                throw new ArgumentNullException("data");
+
+            int width, height;
+            if (rect.HasValue)
+            {
+                var rectangle = rect.Value;
+                width = rectangle.Width;
+                height = rectangle.Height;
+
+                if (rectangle.X < 0 || rectangle.Y < 0 || rectangle.Width <= 0 || rectangle.Height <= 0 ||
+                    rectangle.Right > PresentationParameters.BackBufferWidth || rectangle.Top > PresentationParameters.BackBufferHeight)
+                    throw new ArgumentException("Rectangle must fit in BackBuffer dimensions");
+            }
+            else
+            {
+                width = PresentationParameters.BackBufferWidth;
+                height = PresentationParameters.BackBufferHeight;
+            }
+
+            var tSize = ReflectionHelpers.SizeOf<T>.Get();
+            var fSize = PresentationParameters.BackBufferFormat.GetSize();
+            if (tSize > fSize || fSize % tSize != 0)
+                throw new ArgumentException("Type T is of an invalid size for the format of this texture.", "T");
+            if (startIndex < 0 || startIndex >= data.Length)
+                throw new ArgumentException("startIndex must be at least zero and smaller than data.Length.", "startIndex");
+            if (data.Length < startIndex + elementCount)
+                throw new ArgumentException("The data array is too small.");
+            var dataByteSize = width * height * fSize;
+
+            if (elementCount * tSize != dataByteSize)
+                throw new ArgumentException(string.Format("elementCount is not the right size, " +
+                                            "elementCount * sizeof(T) is {0}, but data size is {1} bytes.",
+                                            elementCount * tSize, dataByteSize), "elementCount");
+
+            PlatformGetBackBufferData(rect, data, startIndex, elementCount);
         }
 
         private static int GetElementCountArray(PrimitiveType primitiveType, int primitiveCount)
