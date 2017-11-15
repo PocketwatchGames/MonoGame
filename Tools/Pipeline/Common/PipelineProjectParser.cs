@@ -157,7 +157,7 @@ namespace MonoGame.Tools.Pipeline
             _project.LaunchDebugger = true;
         }
 
-        public bool AddContent(string sourceFile, bool skipDuplicates)
+        public bool AddContent(string sourceFile, string assetName, bool skipDuplicates)
         {
             // Make sure the source file is relative to the project.
             var projectDir = ProjectDirectory + Path.DirectorySeparatorChar;

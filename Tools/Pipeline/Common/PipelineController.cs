@@ -518,10 +518,6 @@ namespace MonoGame.Tools.Pipeline
             // Construct the command line.
             string commands = "";
             {
-                // Insert this command first, so that if there is a parsing error later on, we can actually debug it.
-                if (LaunchDebugger)
-                    commands += "/launchdebugger ";
-
                 commands += string.Format("/@:\"{0}\" /clean", tempPath);
             }
 
